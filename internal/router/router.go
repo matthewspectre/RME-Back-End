@@ -15,6 +15,7 @@ import (
 	hppb "rme/internal/handler/pemeriksaan_penunjang_bedah"
 	hpv "rme/internal/handler/pemeriksaan_vital"
 	hpoli "rme/internal/handler/poli"
+	hrencana "rme/internal/handler/rencana_rawat"
 	hru "rme/internal/handler/rujuk_ulang"
 	hta "rme/internal/handler/tatalaksana"
 
@@ -39,7 +40,7 @@ func RegisterAntrianRoutes(r *gin.Engine, handler *hantrian.Handler) {
 //	r := gin.Default()
 //	handler := anamnesis.NewHandler(uc)
 //	router.RegisterAnamnesisRoutes(r, handler)
-//	r.Run(":8080")
+//	r.Run(":8081")
 
 func RegisterAnamnesisRoutes(r *gin.Engine, handler *hanamnesis.Handler) {
 	group := r.Group("/anamnesis")
@@ -188,5 +189,15 @@ func RegisterRujukUlangRoutes(r *gin.Engine, handler *hru.Handler) {
 	group.GET("/:id", handler.GetByID)
 	group.PATCH("/:id", handler.Update)
 	group.DELETE("/:id", handler.Delete)
+	group.PATCH("/:id/hide", handler.Hide)
+}
+
+// RegisterRencanaRawatRoutes mendaftarkan endpoint /rencana_rawat
+func RegisterRencanaRawatRoutes(r *gin.Engine, handler *hrencana.Handler) {
+	group := r.Group("/rencana_rawat")
+	group.POST("/", handler.Create)
+	group.GET("/", handler.GetAll)
+	group.GET("/:id", handler.GetByID)
+	group.PATCH("/:id", handler.Update)
 	group.PATCH("/:id/hide", handler.Hide)
 }

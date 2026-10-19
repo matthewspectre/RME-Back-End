@@ -1,9 +1,11 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -24,6 +26,7 @@ import (
 	handlerPemeriksaanPenunjangBedah "rme/internal/handler/pemeriksaan_penunjang_bedah"
 	handlerPemeriksaanVital "rme/internal/handler/pemeriksaan_vital"
 	handlerPoli "rme/internal/handler/poli"
+	handlerRencanaRawat "rme/internal/handler/rencana_rawat"
 	handlerRujukUlang "rme/internal/handler/rujuk_ulang"
 	handlerTatalaksana "rme/internal/handler/tatalaksana"
 
@@ -40,6 +43,7 @@ import (
 	mysqlPemeriksaanPenunjangBedah "rme/internal/mysql/pemeriksaan_penunjang_bedah"
 	mysqlPemeriksaanVital "rme/internal/mysql/pemeriksaan_vital"
 	mysqlPoli "rme/internal/mysql/poli"
+	mysqlRencanaRawat "rme/internal/mysql/rencana_rawat"
 	mysqlRujukUlang "rme/internal/mysql/rujuk_ulang"
 	mysqlTatalaksana "rme/internal/mysql/tatalaksana"
 	mysqlUser "rme/internal/mysql/user"
@@ -61,11 +65,16 @@ import (
 	usecasePemeriksaanPenunjangBedah "rme/internal/usecase/pemeriksaan_penunjang_bedah"
 	usecasePemeriksaanVital "rme/internal/usecase/pemeriksaan_vital"
 	usecasePoli "rme/internal/usecase/poli"
+	usecaseRencanaRawat "rme/internal/usecase/rencana_rawat"
 	usecaseRujukUlang "rme/internal/usecase/rujuk_ulang"
 	usecaseTatalaksana "rme/internal/usecase/tatalaksana"
 )
 
 func main() {
+	var httpPortFlag string
+	flag.StringVar(&httpPortFlag, "http-port", "", "HTTP listen port (overrides APP_PORT/PORT env var)")
+	flag.Parse()
+
 	// Ambil konfigurasi DB dari environment (sesuai launch.json)
 	user := os.Getenv("DB_USER")
 	pass := os.Getenv("DB_PASS")
@@ -161,6 +170,9 @@ func main() {
 	repoDiagnosis := mysqlDiagnosis.NewMySQLRepo(db)
 	ucDiagnosis := usecaseDiagnosis.NewUsecase(repoDiagnosis)
 	handlerDiagnosisHTTP := handlerDiagnosis.NewHandler(ucDiagnosis)
+	repoRencanaRawat := mysqlRencanaRawat.NewRepository(db)
+	ucRencanaRawat := usecaseRencanaRawat.NewUsecase(repoRencanaRawat)
+	handlerRencanaRawatHTTP := handlerRencanaRawat.NewHandler(ucRencanaRawat)
 	repoRujukUlang := mysqlRujukUlang.NewRepository(db)
 	ucRujukUlang := usecaseRujukUlang.NewUsecase(repoRujukUlang)
 	handlerRujukUlangHTTP := handlerRujukUlang.NewHandler(ucRujukUlang)
@@ -178,12 +190,29 @@ func main() {
 	router.RegisterICDRoutes(r, handlerICDHTTP)
 	router.RegisterTatalaksanaRoutes(r, handlerTatalaksanaHTTP)
 	router.RegisterRujukUlangRoutes(r, handlerRujukUlangHTTP)
+	router.RegisterRencanaRawatRoutes(r, handlerRencanaRawatHTTP)
 	router.RegisterDiagnosisRoutes(r, handlerDiagnosisHTTP)
 	router.RegisterLokalisBedahRoutes(r, handlerLokalisBedahHTTP)
 	router.RegisterPemeriksaanFungsiOrganRoutes(r, handlerPemeriksaanFungsiOrganHTTP)
 	router.RegisterPemeriksaanPenunjangBedahRoutes(r, handlerPemeriksaanPenunjangBedahHTTP)
 
-	if err := r.Run(":8080"); err != nil {
+	httpPort := strings.TrimSpace(httpPortFlag)
+	if httpPort == "" {
+		httpPort = strings.TrimSpace(os.Getenv("APP_PORT"))
+	}
+	if httpPort == "" {
+		httpPort = strings.TrimSpace(os.Getenv("PORT"))
+	}
+	if httpPort == "" {
+		httpPort = "8080"
+	}
+
+	listenAddr := httpPort
+	if !strings.Contains(listenAddr, ":") {
+		listenAddr = ":" + listenAddr
+	}
+	log.Printf("listening and serving HTTP on %s", listenAddr)
+	if err := r.Run(listenAddr); err != nil {
 		log.Fatalf("failed to run server: %v", err)
 	}
 }
